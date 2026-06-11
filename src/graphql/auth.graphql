@@ -1,5 +1,46 @@
+mutation Login($input: LoginInput!) {
+  login(input: $input) {
+    accessToken
+    tokenType
+    expiresIn
+  }
+}
+
+mutation Register($input: RegisterInput!) {
+  register(input: $input) {
+    accepted
+    message
+  }
+}
+
+query RegistrationEnabled {
+  registrationEnabled
+}
+
+mutation RequestPasswordReset($input: RequestPasswordResetInput!) {
+  requestPasswordReset(input: $input) {
+    accepted
+    message
+  }
+}
+
+mutation VerifyPasswordResetOtp($input: VerifyPasswordResetOtpInput!) {
+  verifyPasswordResetOtp(input: $input) {
+    resetToken
+  }
+}
+
+mutation CompletePasswordReset($input: CompletePasswordResetInput!) {
+  completePasswordReset(input: $input) {
+    success
+  }
+}
+
 query Me {
-  me
+  me {
+    sub
+    permissions
+  }
 }
 
 query HavePermission($permissionKey: String!) {
