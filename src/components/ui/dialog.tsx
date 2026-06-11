@@ -1,6 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 
 export const DialogRoot = Dialog.Root;
@@ -91,12 +92,14 @@ export const DialogCloseTrigger = React.forwardRef<
   HTMLButtonElement,
   Omit<React.ComponentPropsWithoutRef<typeof Dialog.Close>, "asChild">
 >(function DialogCloseTrigger({ className, children, ...props }, ref) {
+  const t = useTranslations("common");
+
   return (
     <Dialog.Close ref={ref} asChild {...props}>
       <button
         type="button"
         className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-xl leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline focus-visible:ring-2 focus-visible:ring-[#6d28d9] focus-visible:ring-offset-2 ${className ?? ""}`}
-        aria-label="Close"
+        aria-label={t("close")}
       >
         {children ?? <span aria-hidden>×</span>}
       </button>
