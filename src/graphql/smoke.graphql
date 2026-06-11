@@ -1,0 +1,11 @@
+query Hello {
+  hello
+}
+
+mutation BumpCounter {
+  bumpCounter
+}
+
+subscription CounterUpdated {
+  counterUpdated
+}

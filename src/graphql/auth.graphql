@@ -1,0 +1,7 @@
+query Me {
+  me
+}
+
+query HavePermission($permissionKey: String!) {
+  havePermission(permissionKey: $permissionKey)
+}
