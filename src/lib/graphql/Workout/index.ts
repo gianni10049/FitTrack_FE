@@ -1,0 +1,1 @@
+export { requestTodayWorkoutTemplate } from "./workoutRequests";

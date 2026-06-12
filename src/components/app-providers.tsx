@@ -6,20 +6,19 @@ import { Provider } from "react-redux";
 import { ModalHost } from "@/components/modal";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { createBrowserApolloClient } from "@/lib/apollo-client";
+import { registerApolloClient } from "@/lib/graphql/make-apollo-client";
 import { registerAppStore } from "@/lib/redux/app-store-ref";
 import { makeStore } from "@/lib/redux/store";
 
-/**
- * Apollo + Redux nello stesso client boundary: lo store riceve `apolloClient` come `extra` dei thunk.
- */
 export function AppProviders({ children }: { children: ReactNode }) {
   const apolloClient = useMemo(() => createBrowserApolloClient(), []);
-  const store = useMemo(() => makeStore(apolloClient), [apolloClient]);
+  const store = useMemo(() => makeStore(), []);
 
   useEffect(() => {
+    registerApolloClient(apolloClient);
     registerAppStore(store);
     return () => registerAppStore(undefined);
-  }, [store]);
+  }, [apolloClient, store]);
 
   return (
     <ApolloProvider client={apolloClient}>

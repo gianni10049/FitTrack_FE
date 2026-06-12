@@ -1,0 +1,220 @@
+type AuthTokenPayload {
+  accessToken: String!
+  expiresIn: Int!
+  tokenType: String!
+}
+
+input CompletePasswordResetInput {
+  newPassword: String!
+  resetToken: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+enum DayOfWeek {
+  FRIDAY
+  MONDAY
+  SATURDAY
+  SUNDAY
+  THURSDAY
+  TUESDAY
+  WEDNESDAY
+}
+
+input LogWaterIntakeInput {
+  amountMl: Int!
+  recordedAt: String
+}
+
+input LogWorkoutSetInput {
+  exerciseOrder: Int!
+  reps: String
+  sessionId: ID!
+  setNumber: Int!
+  setType: WorkoutSetType!
+  weightKg: Float
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type MeGql {
+  permissions: [String!]!
+  sub: String!
+}
+
+type Mutation {
+  cancelWorkoutSession(id: ID!): WorkoutSessionGql!
+
+  """Imposta la nuova password usando il token ottenuto dopo OTP."""
+  completePasswordReset(input: CompletePasswordResetInput!): PasswordResetCompletePayload!
+  completeWorkoutSession(id: ID!): WorkoutSessionGql!
+  logWaterIntake(input: LogWaterIntakeInput!): WaterIntakeDayGql!
+  logWorkoutSet(input: LogWorkoutSetInput!): WorkoutSessionGql!
+
+  """
+  Autenticazione con email e password. Richiede account approvato da un admin. Restituisce JWT HS256.
+  """
+  login(input: LoginInput!): AuthTokenPayload!
+
+  """
+  Registrazione self-service: crea account in attesa di approvazione admin (nessun JWT).
+  """
+  register(input: RegisterInput!): RegistrationPayload!
+
+  """
+  Richiesta recupero password: invio OTP per email se l’utente esiste (risposta uniforme).
+  """
+  requestPasswordReset(input: RequestPasswordResetInput!): PasswordResetRequestPayload!
+  setWaterIntakeTarget(input: SetWaterIntakeTargetInput!): WaterIntakeDayGql!
+  startWorkoutSession(input: StartWorkoutSessionInput!): WorkoutSessionGql!
+
+  """Verifica OTP; restituisce JWT di reset password (breve durata)."""
+  verifyPasswordResetOtp(input: VerifyPasswordResetOtpInput!): PasswordResetVerificationPayload!
+}
+
+type PasswordResetCompletePayload {
+  success: Boolean!
+}
+
+type PasswordResetRequestPayload {
+  accepted: Boolean!
+  message: String
+}
+
+type PasswordResetVerificationPayload {
+  resetToken: String!
+}
+
+type Query {
+  activeWorkoutSession: WorkoutSessionGql
+  havePermission(permissionKey: String!): Boolean!
+  me: MeGql!
+  myWaterIntakeDay(day: String!): WaterIntakeDayGql!
+  myWaterIntakeHistory(fromDay: String, limit: Int, toDay: String): [WaterIntakeDayGql!]!
+  myWaterIntakeToday: WaterIntakeDayGql!
+
+  """
+  Indica se la registrazione pubblica è abilitata (AUTH_REGISTRATION_ENABLED).
+  """
+  registrationEnabled: Boolean!
+  todayWorkoutTemplate: WorkoutTemplateGql
+  workoutSession(id: ID!): WorkoutSessionGql!
+  workoutSessions(limit: Int): [WorkoutSessionGql!]!
+  workoutTemplate(id: ID!): WorkoutTemplateGql
+  workoutTemplates: [WorkoutTemplateGql!]!
+}
+
+input RegisterInput {
+  email: String!
+  firstName: String
+  lastName: String
+  password: String!
+}
+
+type RegistrationPayload {
+  accepted: Boolean!
+  message: String
+}
+
+input RequestPasswordResetInput {
+  email: String!
+}
+
+input SetWaterIntakeTargetInput {
+  day: String
+  targetMl: Int!
+}
+
+input StartWorkoutSessionInput {
+  templateId: ID!
+}
+
+input VerifyPasswordResetOtpInput {
+  email: String!
+  otp: String!
+}
+
+type WaterIntakeDayGql {
+  createdAt: DateTime!
+  day: String!
+  entries: [WaterIntakeEntryGql!]!
+  id: ID!
+  targetMl: Int!
+  totalMl: Int!
+  updatedAt: DateTime!
+}
+
+type WaterIntakeEntryGql {
+  amountMl: Int!
+  recordedAt: DateTime!
+}
+
+type WorkoutSessionExerciseGql {
+  name: String!
+  order: Int!
+  restSeconds: Int!
+  setLogs: [WorkoutSetLogGql!]!
+  targetMuscle: String!
+  targetReps: String!
+  targetSets: Int!
+  techniqueNotes: String!
+  warmupNotes: String!
+}
+
+type WorkoutSessionGql {
+  completedAt: DateTime
+  exercises: [WorkoutSessionExerciseGql!]!
+  id: ID!
+  startedAt: DateTime!
+  status: WorkoutSessionStatus!
+  templateCode: String!
+  templateId: ID!
+  templateTitle: String!
+}
+
+enum WorkoutSessionStatus {
+  CANCELLED
+  COMPLETED
+  IN_PROGRESS
+}
+
+type WorkoutSetLogGql {
+  loggedAt: DateTime
+  reps: String
+  setNumber: Int!
+  setType: WorkoutSetType!
+  weightKg: Float
+}
+
+enum WorkoutSetType {
+  WARMUP
+  WORKING
+}
+
+type WorkoutTemplateExerciseGql {
+  name: String!
+  order: Int!
+  personalNotes: String
+  restSeconds: Int!
+  targetMuscle: String!
+  targetReps: String!
+  targetSets: Int!
+  techniqueNotes: String!
+  warmupNotes: String!
+}
+
+type WorkoutTemplateGql {
+  code: String!
+  dayOfWeek: DayOfWeek!
+  exercises: [WorkoutTemplateExerciseGql!]!
+  id: ID!
+  programName: String!
+  sortOrder: Int!
+  title: String!
+}

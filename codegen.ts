@@ -1,8 +1,9 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
 /**
- * Schema via introspection: avvia il backend prima di `yarn codegen`.
- * Override: `CODEGEN_GRAPHQL_SCHEMA_URL` (es. CI con API già su).
+ * Codegen tipi-only (stile `.cursor/examples/graphql`):
+ * le operazioni `gql` restano in `src/lib/graphql/<Dominio>/operations/*.ts`.
+ * Avvia il backend prima di `yarn codegen` (default :4000).
  */
 const schemaUrl =
   process.env.CODEGEN_GRAPHQL_SCHEMA_URL?.trim() ||
@@ -10,15 +11,15 @@ const schemaUrl =
 
 const config: CodegenConfig = {
   overwrite: true,
-  schema: schemaUrl,
-  documents: ["src/graphql/**/*.graphql"],
+  allowPartialOutputs: true,
   generates: {
-    "src/generated/graphql.ts": {
-      plugins: ["typescript", "typescript-operations", "typed-document-node"],
-      config: {
-        documentMode: "graphQLTag",
-        gqlImport: "@apollo/client#gql",
-      },
+    "./src/lib/graphql/project_schema.graphql": {
+      schema: schemaUrl,
+      plugins: ["schema-ast"],
+    },
+    "./src/lib/graphql/graphql.ts": {
+      schema: "./src/lib/graphql/project_schema.graphql",
+      plugins: ["typescript"],
     },
   },
 };
