@@ -1,17 +1,12 @@
 import { configureStore } from "@reduxjs/toolkit";
-import type { ApolloClient } from "@apollo/client";
 import { rootReducer } from "./root-reducer";
 import { modalSlice } from "./slices/modal";
-import type { ThunkExtra } from "./thunk-extra";
 
-export function makeStore(apolloClient: ApolloClient) {
-  const extra: ThunkExtra = { apolloClient };
-
+export function makeStore() {
   return configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
-        thunk: { extraArgument: extra },
         serializableCheck: {
           ignoredActions: [modalSlice.actions.open.type],
           ignoredPaths: ["modal.modals"],
