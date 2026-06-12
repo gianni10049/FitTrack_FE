@@ -12,10 +12,17 @@ import {
   setPasswordResetToken,
 } from "@/features/auth/lib/password-reset-flow";
 import {
-  requestPasswordReset,
-  verifyPasswordResetOtp,
-} from "@/features/auth/redux/password-reset-thunks";
-import { useAppDispatch } from "@/lib/redux/hooks";
+  clearRequestPasswordResetError,
+  clearVerifyPasswordResetOtpError,
+  onRequestPasswordReset,
+  onVerifyPasswordResetOtp,
+  selectRequestPasswordResetError,
+  selectRequestPasswordResetLoading,
+  selectRequestPasswordResetResponse,
+  selectVerifyPasswordResetOtpError,
+  selectVerifyPasswordResetOtpLoading,
+} from "@/lib/redux";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 const RESEND_COOLDOWN_SEC = 60;
 
@@ -25,20 +32,30 @@ export function PasswordResetOtpForm() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SEC);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const isVerifying = useAppSelector(selectVerifyPasswordResetOtpLoading);
+  const isResending = useAppSelector(selectRequestPasswordResetLoading);
+  const verifyError = useAppSelector(selectVerifyPasswordResetOtpError);
+  const resendError = useAppSelector(selectRequestPasswordResetError);
+  const resendResponse = useAppSelector(selectRequestPasswordResetResponse);
+
+  const error = validationError ?? verifyError ?? resendError;
+  const info =
+    resendResponse?.message && !resendError
+      ? resendResponse.message
+      : null;
 
   useEffect(() => {
+    dispatch(clearRequestPasswordResetError());
     const stored = getPasswordResetEmail();
     if (!stored) {
       router.replace("/recupera-password");
       return;
     }
     setEmail(stored);
-  }, [router]);
+  }, [dispatch, router]);
 
   useEffect(() => {
     if (cooldown <= 0) {
@@ -53,27 +70,19 @@ export function PasswordResetOtpForm() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!email || !/^\d{5}$/.test(otp)) {
-      setError(t("auth.passwordReset.otp.invalidCode"));
+      setValidationError(t("auth.passwordReset.otp.invalidCode"));
       return;
     }
 
-    setError(null);
-    setInfo(null);
-    setIsLoading(true);
-    const result = await dispatch(verifyPasswordResetOtp({ email, otp }));
-    setIsLoading(false);
+    setValidationError(null);
+    dispatch(clearVerifyPasswordResetOtpError());
+    dispatch(clearRequestPasswordResetError());
 
-    if (verifyPasswordResetOtp.fulfilled.match(result)) {
+    const result = await dispatch(onVerifyPasswordResetOtp({ email, otp }));
+    if (onVerifyPasswordResetOtp.fulfilled.match(result)) {
       setPasswordResetToken(result.payload.resetToken);
       router.push("/recupera-password/nuova-password");
-      return;
     }
-
-    setError(
-      typeof result.payload === "string"
-        ? result.payload
-        : t("auth.passwordReset.otp.errorFallback"),
-    );
   };
 
   const handleResend = async () => {
@@ -81,24 +90,14 @@ export function PasswordResetOtpForm() {
       return;
     }
 
-    setError(null);
-    setInfo(null);
-    setIsResending(true);
-    const result = await dispatch(requestPasswordReset(email));
-    setIsResending(false);
+    dispatch(clearVerifyPasswordResetOtpError());
+    dispatch(clearRequestPasswordResetError());
 
-    if (requestPasswordReset.fulfilled.match(result)) {
-      setInfo(result.payload.message ?? t("auth.passwordReset.otp.resendSuccess"));
+    const result = await dispatch(onRequestPasswordReset({ email }));
+    if (onRequestPasswordReset.fulfilled.match(result)) {
       setCooldown(RESEND_COOLDOWN_SEC);
       setOtp("");
-      return;
     }
-
-    setError(
-      typeof result.payload === "string"
-        ? result.payload
-        : t("auth.passwordReset.otp.resendErrorFallback"),
-    );
   };
 
   if (!email) {
@@ -125,7 +124,7 @@ export function PasswordResetOtpForm() {
         </div>
 
         <form className="space-y-6" onSubmit={(e) => void handleSubmit(e)}>
-          <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
+          <OtpInput value={otp} onChange={setOtp} disabled={isVerifying} />
 
           <div className="text-center text-sm text-[var(--ft-on-surface-variant)]">
             {cooldown > 0 ? (
@@ -148,27 +147,27 @@ export function PasswordResetOtpForm() {
             )}
           </div>
 
-          {info && (
+          {info ? (
             <p className="rounded-lg border border-[var(--ft-primary-fixed)]/30 bg-[var(--ft-primary-fixed)]/10 px-3 py-2 text-center text-sm text-[var(--ft-primary-fixed)]">
               {info}
             </p>
-          )}
+          ) : null}
 
-          {error && (
+          {error ? (
             <p
               role="alert"
               className="rounded-lg border border-[var(--ft-error)]/30 bg-[var(--ft-error-container)]/20 px-3 py-2 text-sm text-[var(--ft-error)]"
             >
               {error}
             </p>
-          )}
+          ) : null}
 
           <button
             type="submit"
-            disabled={isLoading || otp.length !== 5}
+            disabled={isVerifying || otp.length !== 5}
             className="ft-btn-primary w-full py-4 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading
+            {isVerifying
               ? t("auth.passwordReset.otp.submitting")
               : t("auth.passwordReset.otp.submit")}
           </button>

@@ -3,23 +3,28 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { FormEvent, useState } from "react";
+import { FormEvent } from "react";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { MailIcon } from "@/features/auth/components/auth-icons";
 import { setPasswordResetEmail } from "@/features/auth/lib/password-reset-flow";
-import { requestPasswordReset } from "@/features/auth/redux/password-reset-thunks";
-import { useAppDispatch } from "@/lib/redux/hooks";
+import {
+  clearRequestPasswordResetError,
+  onRequestPasswordReset,
+  selectRequestPasswordResetError,
+  selectRequestPasswordResetLoading,
+} from "@/lib/redux";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 export function PasswordResetRequestForm() {
   const t = useTranslations();
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const isLoading = useAppSelector(selectRequestPasswordResetLoading);
+  const error = useAppSelector(selectRequestPasswordResetError);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
+    dispatch(clearRequestPasswordResetError());
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -29,21 +34,11 @@ export function PasswordResetRequestForm() {
       return;
     }
 
-    setIsLoading(true);
-    const result = await dispatch(requestPasswordReset(email));
-    setIsLoading(false);
-
-    if (requestPasswordReset.fulfilled.match(result)) {
+    const result = await dispatch(onRequestPasswordReset({ email }));
+    if (onRequestPasswordReset.fulfilled.match(result)) {
       setPasswordResetEmail(email);
       router.push("/recupera-password/otp");
-      return;
     }
-
-    setError(
-      typeof result.payload === "string"
-        ? result.payload
-        : t("auth.passwordReset.request.errorFallback"),
-    );
   };
 
   return (
@@ -82,14 +77,14 @@ export function PasswordResetRequestForm() {
             </div>
           </div>
 
-          {error && (
+          {error ? (
             <p
               role="alert"
               className="rounded-lg border border-[var(--ft-error)]/30 bg-[var(--ft-error-container)]/20 px-3 py-2 text-sm text-[var(--ft-error)]"
             >
               {error}
             </p>
-          )}
+          ) : null}
 
           <button
             type="submit"

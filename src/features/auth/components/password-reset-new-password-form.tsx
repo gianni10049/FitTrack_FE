@@ -16,8 +16,14 @@ import {
   clearPasswordResetFlow,
   getPasswordResetToken,
 } from "@/features/auth/lib/password-reset-flow";
-import { completePasswordReset } from "@/features/auth/redux/password-reset-thunks";
-import { useAppDispatch } from "@/lib/redux/hooks";
+import {
+  clearCompletePasswordResetError,
+  onCompletePasswordReset,
+  selectCompletePasswordResetError,
+  selectCompletePasswordResetLoading,
+  selectIsPasswordResetComplete,
+} from "@/lib/redux";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 function RequirementRow({
   met,
@@ -56,9 +62,10 @@ export function PasswordResetNewPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(false);
+
+  const isLoading = useAppSelector(selectCompletePasswordResetLoading);
+  const sliceError = useAppSelector(selectCompletePasswordResetError);
+  const isComplete = useAppSelector(selectIsPasswordResetComplete);
 
   useEffect(() => {
     const token = getPasswordResetToken();
@@ -68,6 +75,12 @@ export function PasswordResetNewPasswordForm() {
     }
     setResetToken(token);
   }, [router]);
+
+  useEffect(() => {
+    if (isComplete) {
+      clearPasswordResetFlow();
+    }
+  }, [isComplete]);
 
   const checks = useMemo(
     () => getPasswordRequirementChecks(password, confirmPassword),
@@ -79,37 +92,25 @@ export function PasswordResetNewPasswordForm() {
     allPasswordRequirementsMet(checks) &&
     isStrongPassword(password);
 
+  const error = sliceError ?? null;
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!resetToken || !canSubmit) {
       return;
     }
 
-    setError(null);
-    setIsLoading(true);
-    const result = await dispatch(
-      completePasswordReset({ resetToken, newPassword: password }),
-    );
-    setIsLoading(false);
-
-    if (completePasswordReset.fulfilled.match(result)) {
-      clearPasswordResetFlow();
-      setCompleted(true);
-      return;
-    }
-
-    setError(
-      typeof result.payload === "string"
-        ? result.payload
-        : getStrongPasswordPolicyMessage(),
+    dispatch(clearCompletePasswordResetError());
+    await dispatch(
+      onCompletePasswordReset({ resetToken, newPassword: password }),
     );
   };
 
-  if (!resetToken && !completed) {
+  if (!resetToken && !isComplete) {
     return null;
   }
 
-  if (completed) {
+  if (isComplete) {
     return (
       <AuthShell backHref="/login">
         <div className="ft-glass-card w-full max-w-md rounded-2xl p-8 text-center shadow-2xl md:p-10">
@@ -244,14 +245,14 @@ export function PasswordResetNewPasswordForm() {
             />
           </ul>
 
-          {error && (
+          {error ? (
             <p
               role="alert"
               className="rounded-lg border border-[var(--ft-error)]/30 bg-[var(--ft-error-container)]/20 px-3 py-2 text-sm text-[var(--ft-error)]"
             >
-              {error}
+              {error || getStrongPasswordPolicyMessage()}
             </p>
-          )}
+          ) : null}
 
           <button
             type="submit"

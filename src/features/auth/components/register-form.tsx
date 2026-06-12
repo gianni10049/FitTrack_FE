@@ -5,21 +5,30 @@ import { useTranslations } from "next-intl";
 import { FormEvent, useState } from "react";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { MailIcon, LockIcon } from "@/features/auth/components/auth-icons";
-import { register } from "@/features/auth/redux/register-thunk";
-import { useAppDispatch } from "@/lib/redux/hooks";
+import {
+  clearRegisterError,
+  onRegister,
+  selectRegisterError,
+  selectRegisterLoading,
+  selectRegisterResponse,
+} from "@/lib/redux";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 export function RegisterForm() {
   const t = useTranslations();
   const dispatch = useAppDispatch();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const isLoading = useAppSelector(selectRegisterLoading);
+  const error = useAppSelector(selectRegisterError);
+  const registerResponse = useAppSelector(selectRegisterResponse);
   const [showPassword, setShowPassword] = useState(false);
+
+  const successMessage = registerResponse
+    ? (registerResponse.message ?? t("auth.register.successFallback"))
+    : null;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
+    dispatch(clearRegisterError());
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -32,24 +41,7 @@ export function RegisterForm() {
       return;
     }
 
-    setIsLoading(true);
-    const result = await dispatch(
-      register({ email, password, firstName, lastName }),
-    );
-    setIsLoading(false);
-
-    if (register.fulfilled.match(result)) {
-      setSuccessMessage(
-        result.payload.message ?? t("auth.register.successFallback"),
-      );
-      return;
-    }
-
-    setError(
-      typeof result.payload === "string"
-        ? result.payload
-        : t("auth.register.errorFallback"),
-    );
+    await dispatch(onRegister({ email, password, firstName, lastName }));
   };
 
   return (
@@ -158,14 +150,14 @@ export function RegisterForm() {
             </p>
           ) : null}
 
-          {error && (
+          {error ? (
             <p
               role="alert"
               className="rounded-lg border border-[var(--ft-error)]/30 bg-[var(--ft-error-container)]/20 px-3 py-2 text-sm text-[var(--ft-error)]"
             >
               {error}
             </p>
-          )}
+          ) : null}
 
           <button
             type="submit"

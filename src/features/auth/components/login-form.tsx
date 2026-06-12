@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { FormEvent, useState } from "react";
 import {
-  clearAuthError,
-  login,
-  selectAuthError,
+  clearLoginError,
+  onLogin,
+  selectLoginError,
   selectIsAuthLoading,
-} from "@/features/auth/redux";
+} from "@/lib/redux";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 function MailIcon() {
@@ -73,7 +73,7 @@ export function LoginForm() {
   const t = useTranslations();
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const error = useAppSelector(selectAuthError);
+  const error = useAppSelector(selectLoginError);
   const isLoading = useAppSelector(selectIsAuthLoading);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -91,7 +91,7 @@ export function LoginForm() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    dispatch(clearAuthError());
+    dispatch(clearLoginError());
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -102,8 +102,8 @@ export function LoginForm() {
       return;
     }
 
-    const result = await dispatch(login({ email, password }));
-    if (login.fulfilled.match(result)) {
+    const result = await dispatch(onLogin({ email, password }));
+    if (onLogin.fulfilled.match(result)) {
       router.push("/dashboard");
       router.refresh();
     }
