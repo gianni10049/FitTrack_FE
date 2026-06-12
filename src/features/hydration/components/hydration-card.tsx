@@ -1,22 +1,28 @@
 "use client";
 
-import { useMutation, useQuery } from "@apollo/client/react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MaterialIcon } from "@/components/app-shell/material-icon";
-import {
-  LogWaterIntakeDocument,
-  MyWaterIntakeTodayDocument,
-} from "@/generated/graphql";
-import { extractGraphqlErrorMessage } from "@/lib/graphql/extract-error-message";
 import {
   getHydrationGlassCounts,
   HYDRATION_QUICK_ADD_OPTIONS,
   isExcessGlassRed,
   mlToLitersLabel,
 } from "@/features/hydration/lib/hydration-display";
-import { updateHydrationCacheAfterLog } from "@/features/hydration/lib/update-hydration-cache-after-log";
+import { HYDRATION_HISTORY_TREND_LIMIT } from "@/features/hydration/lib/hydration-history-limits";
+import {
+  onLogWaterIntake,
+  onMyWaterIntakeToday,
+  selectHydrationTargetMl,
+  selectHydrationTotalMl,
+  selectIsLoggingWaterIntake,
+  selectLogWaterIntakeError,
+  selectMyWaterIntakeToday,
+  selectMyWaterIntakeTodayError,
+  selectMyWaterIntakeTodayLoading,
+} from "@/lib/redux";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 function HydrationGlasses({
   targetGlasses,
@@ -67,40 +73,39 @@ function HydrationGlasses({
 
 export function HydrationCard() {
   const t = useTranslations();
-  const { data, loading, error } = useQuery(MyWaterIntakeTodayDocument, {
-    fetchPolicy: "network-only",
-  });
-
-  const [logIntake, { loading: isLogging }] = useMutation(LogWaterIntakeDocument);
+  const dispatch = useAppDispatch();
+  const today = useAppSelector(selectMyWaterIntakeToday);
+  const totalMl = useAppSelector(selectHydrationTotalMl);
+  const targetMl = useAppSelector(selectHydrationTargetMl);
+  const loading = useAppSelector(selectMyWaterIntakeTodayLoading);
+  const isLogging = useAppSelector(selectIsLoggingWaterIntake);
+  const error =
+    useAppSelector(selectMyWaterIntakeTodayError) ??
+    useAppSelector(selectLogWaterIntakeError);
   const [loggingAmountMl, setLoggingAmountMl] = useState<number | null>(null);
 
-  const today = data?.myWaterIntakeToday;
-  const totalMl = today?.totalMl ?? 0;
-  const targetMl = today?.targetMl ?? 3500;
+  useEffect(() => {
+    void dispatch(onMyWaterIntakeToday());
+  }, [dispatch]);
+
   const { targetGlasses, filledTargetGlasses, excessGlasses } =
     getHydrationGlassCounts(totalMl, targetMl);
 
   const handleAdd = async (amountMl: number) => {
     setLoggingAmountMl(amountMl);
     try {
-      await logIntake({
-        variables: {
+      await dispatch(
+        onLogWaterIntake({
           input: { amountMl },
-        },
-        update(cache, { data }) {
-          if (data?.logWaterIntake) {
-            updateHydrationCacheAfterLog(cache, data.logWaterIntake);
-          }
-        },
-      });
-    } catch (err: unknown) {
-      console.error(extractGraphqlErrorMessage(err));
+          historyLimit: HYDRATION_HISTORY_TREND_LIMIT,
+        }),
+      );
     } finally {
       setLoggingAmountMl(null);
     }
   };
 
-  const buttonsDisabled = loading || isLogging || Boolean(error);
+  const buttonsDisabled = loading || isLogging || loggingAmountMl != null || Boolean(error);
 
   return (
     <div className="ft-glass-card flex flex-col justify-between rounded-xl p-6 md:col-span-5">
@@ -138,7 +143,7 @@ export function HydrationCard() {
           role="alert"
           className="my-4 rounded-lg border border-[var(--ft-error)]/30 bg-[var(--ft-error-container)]/20 px-3 py-2 text-sm text-[var(--ft-error)]"
         >
-          {extractGraphqlErrorMessage(error)}
+          {error}
         </p>
       ) : (
         <HydrationGlasses

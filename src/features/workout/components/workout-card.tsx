@@ -1,21 +1,31 @@
 "use client";
 
-import { useQuery } from "@apollo/client/react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 import { MaterialIcon } from "@/components/app-shell/material-icon";
-import { TodayWorkoutTemplateDocument } from "@/generated/graphql";
-import { extractGraphqlErrorMessage } from "@/lib/graphql/extract-error-message";
 import { estimateWorkoutDurationMin } from "@/features/workout/lib/estimate-workout-duration";
+import {
+  onTodayWorkoutTemplate,
+  selectIsWorkoutRestDay,
+  selectTodayWorkoutTemplate,
+  selectTodayWorkoutTemplateError,
+  selectTodayWorkoutTemplateLoading,
+} from "@/lib/redux";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 
 export function WorkoutCard() {
   const t = useTranslations();
-  const { data, loading, error } = useQuery(TodayWorkoutTemplateDocument, {
-    fetchPolicy: "network-only",
-  });
+  const dispatch = useAppDispatch();
+  const template = useAppSelector(selectTodayWorkoutTemplate);
+  const loading = useAppSelector(selectTodayWorkoutTemplateLoading);
+  const error = useAppSelector(selectTodayWorkoutTemplateError);
+  const isRestDay = useAppSelector(selectIsWorkoutRestDay);
 
-  const template = data?.todayWorkoutTemplate;
-  const isRestDay = !loading && !error && !template;
+  useEffect(() => {
+    void dispatch(onTodayWorkoutTemplate());
+  }, [dispatch]);
+
   const durationMin = template
     ? estimateWorkoutDurationMin(template.exercises)
     : 0;
@@ -55,7 +65,7 @@ export function WorkoutCard() {
           role="alert"
           className="my-8 rounded-lg border border-[var(--ft-error)]/30 bg-[var(--ft-error-container)]/20 px-3 py-2 text-sm text-[var(--ft-error)]"
         >
-          {extractGraphqlErrorMessage(error)}
+          {error}
         </p>
       ) : isRestDay ? (
         <div className="my-8 flex items-center gap-3 rounded-xl border border-[var(--ft-outline-variant)]/30 bg-[var(--ft-surface-container-high)]/20 p-4">

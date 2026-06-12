@@ -1,29 +1,26 @@
 import type { ApolloCache } from "@apollo/client";
-import type {
-  LogWaterIntakeMutation,
-  MyWaterIntakeHistoryQuery,
-} from "@/generated/graphql";
+import type { WaterIntakeDayGql } from "@/lib/graphql/graphql";
 import {
-  MyWaterIntakeHistoryDocument,
-  MyWaterIntakeTodayDocument,
-} from "@/generated/graphql";
-import { HYDRATION_HISTORY_TREND_LIMIT } from "@/features/hydration/lib/hydration-history-limits";
-
-const HISTORY_LIMIT = HYDRATION_HISTORY_TREND_LIMIT;
+  MyWaterIntakeHistory,
+  MyWaterIntakeToday,
+} from "@/lib/graphql/Hydration/operations/queries";
 
 export function updateHydrationCacheAfterLog(
   cache: ApolloCache,
-  logged: LogWaterIntakeMutation["logWaterIntake"],
+  logged: WaterIntakeDayGql,
+  historyLimit: number,
 ) {
   cache.writeQuery({
-    query: MyWaterIntakeTodayDocument,
+    query: MyWaterIntakeToday,
     data: { myWaterIntakeToday: logged },
   });
 
   try {
-    const existing = cache.readQuery<MyWaterIntakeHistoryQuery>({
-      query: MyWaterIntakeHistoryDocument,
-      variables: { limit: HISTORY_LIMIT },
+    const existing = cache.readQuery<{
+      myWaterIntakeHistory: WaterIntakeDayGql[];
+    }>({
+      query: MyWaterIntakeHistory,
+      variables: { limit: historyLimit },
     });
 
     if (!existing?.myWaterIntakeHistory) {
@@ -35,11 +32,11 @@ export function updateHydrationCacheAfterLog(
     const nextHistory =
       index >= 0
         ? history.map((day, i) => (i === index ? logged : day))
-        : [logged, ...history].slice(0, HISTORY_LIMIT);
+        : [logged, ...history].slice(0, historyLimit);
 
     cache.writeQuery({
-      query: MyWaterIntakeHistoryDocument,
-      variables: { limit: HISTORY_LIMIT },
+      query: MyWaterIntakeHistory,
+      variables: { limit: historyLimit },
       data: { myWaterIntakeHistory: nextHistory },
     });
   } catch {
